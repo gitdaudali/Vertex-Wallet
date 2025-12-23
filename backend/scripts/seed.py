@@ -24,6 +24,7 @@ def seed_users(db):
     for user_data in users_data:
         email = user_data["email"]
         password = user_data["password"]
+        name = user_data.get("name", "User")  # Default name if not provided
         
         # Check if user already exists
         existing_user = db.query(models.User).filter(models.User.email == email).first()
@@ -34,6 +35,7 @@ def seed_users(db):
         
         # Create new user
         user = models.User(
+            name=name,
             email=email,
             password_hash=get_password_hash(password)
         )

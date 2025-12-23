@@ -56,6 +56,8 @@ const Login3D = () => {
 
     try {
       logger.log('[LOGIN] Attempting login...', { email })
+      logger.log('[LOGIN] API URL:', import.meta.env.VITE_API_URL || 'http://localhost:8000')
+      
       const response = await authService.login(email, password)
       logger.log('[LOGIN] Success:', response)
       
@@ -73,7 +75,38 @@ const Login3D = () => {
       logger.error('[LOGIN] Error response:', err.response)
       logger.error('[LOGIN] Error data:', err.response?.data)
       
-      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.'
+      let errorMessage = 'Login failed. Please try again.'
+      
+      // Network errors
+      if (!err.response) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          errorMessage = 'Request timeout. Backend is taking too long to respond. Please check if backend is running.'
+        } else if (err.userMessage) {
+          errorMessage = err.userMessage
+        } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+          errorMessage = 'Cannot connect to server. Please check if backend is running on http://localhost:8000'
+        } else if (err.code === 'ECONNREFUSED') {
+          errorMessage = 'Server connection refused. Backend might not be running.'
+        } else {
+          errorMessage = `Network error: ${err.message || 'Unknown error'}. Please check your connection.`
+        }
+      } 
+      // Server errors
+      else if (err.response.status === 500) {
+        errorMessage = 'Server error. Please try again later or check backend logs.'
+      } else if (err.response.status === 404) {
+        errorMessage = 'API endpoint not found. Please check backend configuration.'
+      } else if (err.response.status === 0) {
+        errorMessage = 'CORS error. Backend might not be configured correctly.'
+      }
+      // API errors
+      else {
+        errorMessage = err.response?.data?.detail || 
+                      err.response?.data?.message || 
+                      err.message || 
+                      'Login failed. Please check your email and password.'
+      }
+      
       setError(errorMessage)
       showToast(errorMessage, 'error')
       setLoading(false)

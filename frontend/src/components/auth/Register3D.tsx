@@ -83,15 +83,32 @@ const Register3D = () => {
       
       let errorMessage = 'Registration failed. Please try again.'
       
-      if (err.response) {
-        // Server responded with error
-        errorMessage = err.response.data?.detail || err.response.data?.message || errorMessage
-      } else if (err.request) {
-        // Request made but no response (network error)
-        errorMessage = 'Cannot connect to server. Please check if the backend is running.'
-      } else {
-        // Something else happened
-        errorMessage = err.message || errorMessage
+      // Network errors
+      if (!err.response) {
+        if (err.userMessage) {
+          errorMessage = err.userMessage
+        } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+          errorMessage = 'Cannot connect to server. Please check if backend is running.'
+        } else if (err.code === 'ECONNREFUSED') {
+          errorMessage = 'Server connection refused. Backend might not be running.'
+        } else {
+          errorMessage = 'Network error. Please check your connection.'
+        }
+      } 
+      // Server errors
+      else if (err.response.status === 500) {
+        errorMessage = 'Server error. Please try again later or check backend logs.'
+      } else if (err.response.status === 404) {
+        errorMessage = 'API endpoint not found. Please check backend configuration.'
+      } else if (err.response.status === 0) {
+        errorMessage = 'CORS error. Backend might not be configured correctly.'
+      }
+      // API errors
+      else {
+        errorMessage = err.response?.data?.detail || 
+                      err.response?.data?.message || 
+                      err.message || 
+                      'Registration failed. Please check your information.'
       }
       
       setError(errorMessage)

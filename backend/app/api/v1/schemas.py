@@ -5,17 +5,36 @@ from typing import Optional
 
 # Auth Schemas
 class UserRegister(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
+    """User registration schema."""
+    name: str = "John Doe"
+    email: EmailStr = "user@example.com"
+    password: str = "securepassword123"
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "John Doe",
+                "email": "user@example.com",
+                "password": "securepassword123"
+            }
+        }
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    """User login schema."""
+    email: EmailStr = "test@example.com"
+    password: str = "test123456"
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "test@example.com",
+                "password": "test123456"
+            }
+        }
 
 class UserResponse(BaseModel):
     id: int
-    name: str
+    name: Optional[str] = None  # Make name optional to handle existing users
     email: str
     created_at: datetime
     
@@ -49,10 +68,20 @@ class WalletBalance(BaseModel):
 
 # Invoice Schemas
 class InvoiceCreate(BaseModel):
+    """Invoice creation schema. Provide either amount_btc or amount_usd."""
     amount_btc: Optional[Decimal] = None
     amount_usd: Optional[float] = None
     description: Optional[str] = None
     expires_in_hours: int = 24
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "amount_usd": 100.0,
+                "description": "Payment for services",
+                "expires_in_hours": 24
+            }
+        }
 
 class InvoiceResponse(BaseModel):
     id: int

@@ -16,6 +16,7 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+# Note: .env.production and .env.development are committed (no secrets)
 
 # Logs
 npm-debug.log*

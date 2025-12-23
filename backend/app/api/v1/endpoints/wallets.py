@@ -10,12 +10,28 @@ from app.core.config import settings
 
 router = APIRouter()
 
-@router.post("/generate", response_model=WalletResponse)
+@router.post(
+    "/generate", 
+    response_model=WalletResponse,
+    summary="Generate Bitcoin address",
+    description="Generate a new Bitcoin receiving address for the authenticated user",
+    responses={
+        200: {"description": "Wallet address generated successfully"},
+        401: {"description": "Authentication required"}
+    }
+)
 async def generate_wallet_address(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Generate a new BTC receiving address."""
+    """
+    Generate a new BTC receiving address.
+    
+    If the user already has a wallet, returns the existing wallet address.
+    Otherwise, generates a new Bitcoin address using BlockCypher API.
+    
+    **Requires authentication.**
+    """
     # Check if user already has a wallet
     existing_wallet = db.query(models.Wallet).filter(models.Wallet.user_id == current_user.id).first()
     if existing_wallet:
@@ -36,12 +52,32 @@ async def generate_wallet_address(
     
     return wallet
 
-@router.get("/balance", response_model=WalletBalance)
+@router.get(
+    "/balance", 
+    response_model=WalletBalance,
+    summary="Get wallet balance",
+    description="Get total balance, confirmed balance, pending balance, and address details",
+    responses={
+        200: {"description": "Wallet balance retrieved successfully"},
+        401: {"description": "Authentication required"}
+    }
+)
 async def get_wallet_balance(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get wallet balance and transaction summary."""
+    """
+    Get wallet balance and transaction summary.
+    
+    Returns:
+    - **total_balance_btc**: Total balance across all addresses
+    - **confirmed_balance_btc**: Balance with required confirmations
+    - **pending_balance_btc**: Balance pending confirmation
+    - **total_received_btc**: Total amount ever received
+    - **addresses**: List of addresses with their balances
+    
+    **Requires authentication.**
+    """
     wallets = db.query(models.Wallet).filter(models.Wallet.user_id == current_user.id).all()
     
     if not wallets:

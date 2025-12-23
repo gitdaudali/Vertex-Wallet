@@ -10,13 +10,35 @@ from app.services.invoice import create_invoice, get_invoice_qr_data
 
 router = APIRouter()
 
-@router.post("/create", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/create", 
+    response_model=InvoiceResponse, 
+    status_code=status.HTTP_201_CREATED,
+    summary="Create invoice",
+    description="Create a new payment invoice with Bitcoin address and QR code",
+    responses={
+        201: {"description": "Invoice created successfully"},
+        400: {"description": "Invalid request - must provide amount_btc or amount_usd"},
+        401: {"description": "Authentication required"}
+    }
+)
 async def create_invoice_endpoint(
     invoice_data: InvoiceCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new invoice."""
+    """
+    Create a new invoice.
+    
+    - **amount_btc**: Amount in Bitcoin (optional if amount_usd provided)
+    - **amount_usd**: Amount in USD (optional if amount_btc provided)
+    - **description**: Invoice description (optional)
+    - **expires_in_hours**: Hours until invoice expires (default: 24)
+    
+    Returns invoice with Bitcoin address and QR code data.
+    
+    **Requires authentication.**
+    """
     if not invoice_data.amount_btc and not invoice_data.amount_usd:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -54,15 +76,33 @@ async def create_invoice_endpoint(
         paid_at=invoice.paid_at
     )
 
-@router.get("", response_model=InvoiceListResponse)
+@router.get(
+    "", 
+    response_model=InvoiceListResponse,
+    summary="List invoices",
+    description="Get paginated list of invoices for the authenticated user",
+    responses={
+        200: {"description": "Invoices retrieved successfully"},
+        401: {"description": "Authentication required"}
+    }
+)
 async def get_invoices(
-    status_filter: Optional[str] = Query(None, alias="status"),
-    limit: int = Query(10, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status: pending, paid, expired"),
+    limit: int = Query(10, ge=1, le=100, description="Number of invoices per page"),
+    offset: int = Query(0, ge=0, description="Number of invoices to skip"),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get list of invoices for the current user."""
+    """
+    Get list of invoices for the current user.
+    
+    Query parameters:
+    - **status**: Filter by invoice status (pending, paid, expired)
+    - **limit**: Number of invoices per page (1-100, default: 10)
+    - **offset**: Number of invoices to skip for pagination (default: 0)
+    
+    **Requires authentication.**
+    """
     query = db.query(models.Invoice).filter(models.Invoice.user_id == current_user.id)
     
     if status_filter:
@@ -94,13 +134,32 @@ async def get_invoices(
         offset=offset
     )
 
-@router.get("/{invoice_id}", response_model=InvoiceResponse)
+@router.get(
+    "/{invoice_id}", 
+    response_model=InvoiceResponse,
+    summary="Get invoice details",
+    description="Get detailed information about a specific invoice",
+    responses={
+        200: {"description": "Invoice details retrieved successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Invoice not found"}
+    }
+)
 async def get_invoice(
     invoice_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get invoice details by ID."""
+    """
+    Get invoice details by ID.
+    
+    - **invoice_id**: The ID of the invoice to retrieve
+    
+    Returns complete invoice information including QR code data.
+    Only returns invoices belonging to the authenticated user.
+    
+    **Requires authentication.**
+    """
     invoice = db.query(models.Invoice).filter(
         models.Invoice.id == invoice_id,
         models.Invoice.user_id == current_user.id
