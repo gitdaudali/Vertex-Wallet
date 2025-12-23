@@ -56,7 +56,7 @@ export const shouldUse3D = (): boolean => {
     }
     
     // Check for WebGL context loss support
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+    gl.getExtension('WEBGL_debug_renderer_info')
     
     return true
   } catch (error) {

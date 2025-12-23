@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Lock, Wallet } from 'lucide-react'
+import { Mail, Lock, Wallet, User } from 'lucide-react'
 import { authService } from '../../services/auth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
@@ -8,6 +8,7 @@ import Card from '../ui/Card'
 import { useToast } from '../../hooks/useToast'
 
 const Register = () => {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -33,7 +34,7 @@ const Register = () => {
     setLoading(true)
 
     try {
-      await authService.register(email, password)
+      await authService.register(name, email, password)
       showToast('Account created successfully!', 'success')
       navigate('/login')
     } catch (err: any) {
@@ -64,6 +65,17 @@ const Register = () => {
                 {error}
               </div>
             )}
+            
+            <Input
+              label="Name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={loading}
+              leftIcon={<User className="h-5 w-5" />}
+              placeholder="Your name"
+            />
             
             <Input
               label="Email"

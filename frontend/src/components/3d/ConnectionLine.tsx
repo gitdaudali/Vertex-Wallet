@@ -15,7 +15,7 @@ interface ConnectionLineProps {
  * Subtle animated pulse to suggest data flow
  */
 const ConnectionLine = ({ start, end, color, opacity = 0.3 }: ConnectionLineProps) => {
-  const lineRef = useRef<Line>(null)
+  const lineRef = useRef<Line>(null!)
   
   // Calculate line points
   const points = useMemo(() => {
@@ -39,7 +39,7 @@ const ConnectionLine = ({ start, end, color, opacity = 0.3 }: ConnectionLineProp
   })
 
   return (
-    <line ref={lineRef}>
+    <line ref={lineRef as any}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
