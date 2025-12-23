@@ -14,43 +14,35 @@ os.environ.setdefault("ENVIRONMENT", "production")
 os.environ.setdefault("VERCEL", "1")
 
 try:
-    # Import Mangum adapter for AWS Lambda/Vercel compatibility
-    from mangum import Mangum
-    
     # Import FastAPI app
     from app.main import app
     
-    # Wrap FastAPI app with Mangum adapter for Vercel/serverless
-    # Mangum converts ASGI app to AWS Lambda/API Gateway format
+    # Import Mangum for AWS Lambda compatibility
+    from mangum import Mangum
+    
+    # Create Mangum handler - Vercel Python runtime expects AWS Lambda format
     handler = Mangum(app, lifespan="off")
     
 except Exception as e:
-    # Log error for debugging in Vercel logs
     import traceback
-    error_msg = f"ERROR: Failed to initialize FastAPI app: {str(e)}\n{traceback.format_exc()}"
-    print(error_msg)
+    print(f"ERROR initializing app: {str(e)}")
+    print(traceback.format_exc())
     
-    # Create a minimal error handler
+    # Fallback: create minimal error app
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
-    from mangum import Mangum
     
-    error_app = FastAPI()
+    fallback_app = FastAPI()
     
-    @error_app.get("/{full_path:path}")
-    @error_app.post("/{full_path:path}")
-    @error_app.put("/{full_path:path}")
-    @error_app.delete("/{full_path:path}")
-    @error_app.patch("/{full_path:path}")
-    async def error_handler(full_path: str):
+    @fallback_app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+    async def fallback_handler(full_path: str):
         return JSONResponse(
             status_code=500,
-            content={
-                "error": "Failed to initialize application",
-                "message": str(e),
-                "path": full_path,
-                "traceback": traceback.format_exc()
-            }
+            content={"error": "App initialization failed", "message": str(e)}
         )
     
-    handler = Mangum(error_app, lifespan="off")
+    try:
+        from mangum import Mangum
+        handler = Mangum(fallback_app, lifespan="off")
+    except:
+        handler = fallback_app
