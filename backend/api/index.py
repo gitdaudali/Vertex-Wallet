@@ -11,14 +11,18 @@ if backend_dir not in sys.path:
 
 # Set environment to production for Vercel
 os.environ.setdefault("ENVIRONMENT", "production")
+os.environ.setdefault("VERCEL", "1")
 
 try:
+    # Import Mangum adapter for AWS Lambda/Vercel compatibility
+    from mangum import Mangum
+    
     # Import FastAPI app
     from app.main import app
     
-    # For Vercel, we need to export the app directly
-    # Vercel's Python runtime will handle ASGI apps automatically
-    handler = app
+    # Wrap FastAPI app with Mangum adapter for Vercel/serverless
+    # Mangum converts ASGI app to AWS Lambda/API Gateway format
+    handler = Mangum(app, lifespan="off")
     
 except Exception as e:
     # Log error for debugging in Vercel logs
@@ -29,18 +33,24 @@ except Exception as e:
     # Create a minimal error handler
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
+    from mangum import Mangum
     
     error_app = FastAPI()
     
     @error_app.get("/{full_path:path}")
+    @error_app.post("/{full_path:path}")
+    @error_app.put("/{full_path:path}")
+    @error_app.delete("/{full_path:path}")
+    @error_app.patch("/{full_path:path}")
     async def error_handler(full_path: str):
         return JSONResponse(
             status_code=500,
             content={
                 "error": "Failed to initialize application",
                 "message": str(e),
-                "path": full_path
+                "path": full_path,
+                "traceback": traceback.format_exc()
             }
         )
     
-    handler = error_app
+    handler = Mangum(error_app, lifespan="off")

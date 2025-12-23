@@ -18,21 +18,37 @@ engine_kwargs = {
 
 # In production/serverless, disable connection pooling issues
 if os.getenv("VERCEL") or os.getenv("ENVIRONMENT") == "production":
-    engine_kwargs["poolclass"] = None  # Disable pooling for serverless
+    # For serverless, use NullPool to avoid connection pooling issues
+    from sqlalchemy.pool import NullPool
+    engine_kwargs["poolclass"] = NullPool
+    engine_kwargs.pop("pool_pre_ping", None)
+    engine_kwargs.pop("pool_recycle", None)
 
 # Create engine with error handling
+# For serverless, don't test connection at import time
+db_url_preview = settings.DATABASE_URL[:20] if len(settings.DATABASE_URL) > 20 else settings.DATABASE_URL
+print(f"[DB] Initializing database engine: {db_url_preview}...")  # Don't print full URL for security
+
 try:
-    db_url_preview = settings.DATABASE_URL[:20] if len(settings.DATABASE_URL) > 20 else settings.DATABASE_URL
-    print(f"[DB] Connecting to database: {db_url_preview}...")  # Don't print full URL for security
     engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
-    # Test connection
-    with engine.connect() as conn:
-        print("[DB] Database connection successful!")
+    
+    # Only test connection in non-serverless environments
+    if not os.getenv("VERCEL"):
+        try:
+            with engine.connect() as conn:
+                print("[DB] Database connection successful!")
+        except Exception as e:
+            print(f"[DB] Database connection warning: {str(e)}")
+            # Don't raise in development, just warn
+            if os.getenv("ENVIRONMENT") == "production" and not os.getenv("VERCEL"):
+                raise
 except Exception as e:
-    print(f"[DB] Database connection error: {str(e)}")
+    print(f"[DB] Database engine creation error: {str(e)}")
     import traceback
     traceback.print_exc()
-    raise
+    # In serverless, don't fail at import time
+    if not os.getenv("VERCEL"):
+        raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
