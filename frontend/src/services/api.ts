@@ -1,10 +1,10 @@
 import axios from 'axios'
 
-// Production backend URL: https://vertexwalletbackend.vercel.app
+// Production backend URL: https://vertex-wallet-etwf.vercel.app
 // Development: http://localhost:8000
 const API_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.PROD 
-    ? 'https://vertexwalletbackend.vercel.app' 
+    ? 'https://vertex-wallet-etwf.vercel.app' 
     : 'http://localhost:8000')
 
 const api = axios.create({

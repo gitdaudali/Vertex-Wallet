@@ -84,7 +84,7 @@ const Login3D = () => {
         } else if (err.userMessage) {
           errorMessage = err.userMessage
         } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-          errorMessage = 'Cannot connect to server. Please check if backend is running on http://localhost:8000'
+          errorMessage = 'Cannot connect to server. Please check your internet connection or backend URL.'
         } else if (err.code === 'ECONNREFUSED') {
           errorMessage = 'Server connection refused. Backend might not be running.'
         } else {
