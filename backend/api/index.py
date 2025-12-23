@@ -1,6 +1,6 @@
 """
 Vercel serverless function entry point for FastAPI
-Vercel Python runtime (@vercel/python) supports ASGI apps directly
+Using Mangum adapter for AWS Lambda/Vercel compatibility
 """
 import sys
 import os
@@ -14,26 +14,26 @@ if backend_dir not in sys.path:
 os.environ.setdefault("ENVIRONMENT", "production")
 os.environ.setdefault("VERCEL", "1")
 
-# Initialize handler variable to ensure it's always defined
-handler = None
-
 try:
     # Import FastAPI app
-    # Vercel Python runtime (@vercel/python) handles ASGI apps natively
     from app.main import app
     
-    # Export the FastAPI app directly
-    # Vercel's @vercel/python builder will detect this as an ASGI app
-    handler = app
+    # Import Mangum adapter for AWS Lambda/Vercel compatibility
+    from mangum import Mangum
+    
+    # Create Mangum handler - this converts ASGI app to AWS Lambda format
+    # Vercel Python runtime expects this format
+    handler = Mangum(app, lifespan="off")
     
 except Exception as e:
     import traceback
-    print(f"ERROR: Failed to import FastAPI app: {str(e)}")
+    print(f"ERROR: Failed to initialize FastAPI app: {str(e)}")
     print(traceback.format_exc())
     
-    # Create minimal error handler to prevent Vercel from crashing
+    # Create minimal error handler
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
+    from mangum import Mangum
     
     error_app = FastAPI()
     
@@ -43,13 +43,14 @@ except Exception as e:
             status_code=500,
             content={
                 "error": "Application initialization failed",
-                "message": str(e)
+                "message": str(e),
+                "traceback": traceback.format_exc()
             }
         )
     
-    handler = error_app
-
-# Ensure handler is always defined (required by Vercel)
-if handler is None:
-    from fastapi import FastAPI
-    handler = FastAPI()
+    # Wrap error app with Mangum
+    try:
+        handler = Mangum(error_app, lifespan="off")
+    except:
+        # Last resort: export FastAPI app directly
+        handler = error_app
