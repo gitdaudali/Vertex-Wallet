@@ -1,6 +1,6 @@
 """
 Vercel serverless function entry point for FastAPI
-Vercel Python runtime requires AWS Lambda compatible handler
+Vercel Python runtime (@vercel/python) supports ASGI apps directly
 """
 import sys
 import os
@@ -14,25 +14,24 @@ if backend_dir not in sys.path:
 os.environ.setdefault("ENVIRONMENT", "production")
 os.environ.setdefault("VERCEL", "1")
 
-# Initialize handler variable
-_mangum = None
+# Initialize handler variable to ensure it's always defined
+handler = None
 
 try:
     # Import FastAPI app
+    # Vercel Python runtime (@vercel/python) handles ASGI apps natively
     from app.main import app
     
-    # Import Mangum for AWS Lambda compatibility
-    from mangum import Mangum
-    
-    # Create Mangum handler instance
-    _mangum = Mangum(app, lifespan="off")
+    # Export the FastAPI app directly
+    # Vercel's @vercel/python builder will detect this as an ASGI app
+    handler = app
     
 except Exception as e:
     import traceback
-    print(f"ERROR initializing app: {str(e)}")
+    print(f"ERROR: Failed to import FastAPI app: {str(e)}")
     print(traceback.format_exc())
     
-    # Fallback: create minimal error app
+    # Create minimal error handler to prevent Vercel from crashing
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
     
@@ -43,27 +42,14 @@ except Exception as e:
         return JSONResponse(
             status_code=500,
             content={
-                "error": "App initialization failed",
-                "message": str(e),
-                "traceback": traceback.format_exc()
+                "error": "Application initialization failed",
+                "message": str(e)
             }
         )
     
-    try:
-        from mangum import Mangum
-        _mangum = Mangum(error_app, lifespan="off")
-    except:
-        _mangum = error_app
+    handler = error_app
 
-# Vercel Python runtime expects handler to be a callable function
-# that accepts (event, context) and returns Lambda response
-def handler(event, context):
-    """AWS Lambda compatible handler wrapper for Vercel"""
-    if _mangum:
-        return _mangum(event, context)
-    else:
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": '{"error": "Handler not initialized"}'
-        }
+# Ensure handler is always defined (required by Vercel)
+if handler is None:
+    from fastapi import FastAPI
+    handler = FastAPI()
