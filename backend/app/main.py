@@ -53,25 +53,13 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# CORS middleware - explicitly allow frontend origin
-cors_origins = settings.cors_origins_list.copy() if isinstance(settings.cors_origins_list, list) else list(settings.cors_origins_list)
-# Ensure common localhost ports are always included for development
-common_dev_ports = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://localhost:5175"]
-for origin in common_dev_ports:
-    if origin not in cors_origins:
-        cors_origins.append(origin)
-
-# Debug: Print CORS origins (only in development)
-if settings.ENVIRONMENT == "development":
-    print(f"[CORS] CORS Origins configured: {cors_origins}")
-
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # Global exception handler to catch all errors and return proper CORS headers
@@ -104,12 +92,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router, prefix="/api")
 
 @app.get("/")
-async def root():
-    return {
-        "message": "Vertex Wallet API",
-        "version": "1.0.0",
-        "status": "running"
-    }
+def root():
+    return {"status": "ok"}
 
 @app.get("/health")
 async def health_check():
