@@ -1,5 +1,6 @@
 """
 Vercel serverless function entry point for FastAPI
+Vercel Python runtime requires AWS Lambda compatible handler
 """
 import sys
 import os
@@ -13,6 +14,9 @@ if backend_dir not in sys.path:
 os.environ.setdefault("ENVIRONMENT", "production")
 os.environ.setdefault("VERCEL", "1")
 
+# Initialize handler variable
+_mangum = None
+
 try:
     # Import FastAPI app
     from app.main import app
@@ -20,8 +24,8 @@ try:
     # Import Mangum for AWS Lambda compatibility
     from mangum import Mangum
     
-    # Create Mangum handler - Vercel Python runtime expects AWS Lambda format
-    handler = Mangum(app, lifespan="off")
+    # Create Mangum handler instance
+    _mangum = Mangum(app, lifespan="off")
     
 except Exception as e:
     import traceback
@@ -32,17 +36,34 @@ except Exception as e:
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
     
-    fallback_app = FastAPI()
+    error_app = FastAPI()
     
-    @fallback_app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-    async def fallback_handler(full_path: str):
+    @error_app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+    async def error_handler(full_path: str):
         return JSONResponse(
             status_code=500,
-            content={"error": "App initialization failed", "message": str(e)}
+            content={
+                "error": "App initialization failed",
+                "message": str(e),
+                "traceback": traceback.format_exc()
+            }
         )
     
     try:
         from mangum import Mangum
-        handler = Mangum(fallback_app, lifespan="off")
+        _mangum = Mangum(error_app, lifespan="off")
     except:
-        handler = fallback_app
+        _mangum = error_app
+
+# Vercel Python runtime expects handler to be a callable function
+# that accepts (event, context) and returns Lambda response
+def handler(event, context):
+    """AWS Lambda compatible handler wrapper for Vercel"""
+    if _mangum:
+        return _mangum(event, context)
+    else:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": '{"error": "Handler not initialized"}'
+        }
