@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Wallet, AlertCircle, CheckCircle } from 'lucide-react'
@@ -7,11 +7,7 @@ import { authService } from '../../services/auth'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import PasswordInput from '../ui/PasswordInput'
-import CryptoScene from '../3d/CryptoScene'
-import FallbackBackground from '../3d/FallbackBackground'
-import ErrorBoundary from '../3d/ErrorBoundary'
 import { useToast } from '../../hooks/useToast'
-import { checkWebGLSupport } from '../../utils/performance'
 import ThemeToggle from '../ui/ThemeToggle'
 import { logger } from '../../utils/logger'
 
@@ -21,33 +17,9 @@ const Login3D = () => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const [use3D, setUse3D] = useState(true)
   const { login } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
-
-  useEffect(() => {
-    setMounted(true)
-    const check3D = () => {
-      try {
-        const hasWebGL = checkWebGLSupport()
-        logger.log('[3D] WebGL support:', hasWebGL)
-        
-        if (hasWebGL) {
-          setUse3D(true)
-          logger.log('[3D] 3D enabled - WebGL detected')
-        } else {
-          setUse3D(false)
-          logger.log('[3D] 3D disabled - No WebGL support')
-        }
-      } catch (error) {
-        logger.warn('[3D] Check failed, enabling 3D anyway:', error)
-        setUse3D(true)
-      }
-    }
-    check3D()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,22 +87,6 @@ const Login3D = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 transition-colors duration-500">
-      {/* 3D Background Scene with Fallback */}
-      {mounted && (
-        <>
-          {use3D ? (
-            <ErrorBoundary fallback={<FallbackBackground />}>
-              <CryptoScene />
-            </ErrorBoundary>
-          ) : (
-            <FallbackBackground />
-          )}
-        </>
-      )}
-      
-      {/* Gradient Overlay for better contrast */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/40 dark:to-gray-950/60 pointer-events-none z-0" />
-      
       {/* Theme Toggle - Top Right */}
       <div className="fixed top-6 right-6 z-50">
         <ThemeToggle />
